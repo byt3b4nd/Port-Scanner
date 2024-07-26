@@ -45,11 +45,13 @@ t1 = datetime.now()
 
 # Function to scan a single port
 def scan_port(port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1)  # Set timeout to 1 second to speed up closed port checks
-    result = sock.connect_ex((remoteServerIP, port))
-    sock.close()
-    return port, result == 0
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(1)  # Set timeout to 1 second
+        try:
+            result = sock.connect_ex((remoteServerIP, port))
+            return port, result == 0
+        except socket.error:
+            return port, False
 
 # Using ThreadPoolExecutor to scan ports concurrently
 open_ports = []
