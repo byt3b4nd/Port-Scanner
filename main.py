@@ -14,7 +14,7 @@ init()
 subprocess.call('clear', shell=True)
 
 # Function to check if the host is up by trying to connect to a common port
-def is_host_up(host, port=80, timeout=2):
+def is_host_up(host, port=80, timeout=1):
     try:
         sock = socket.create_connection((host, port), timeout)
         sock.close()
@@ -35,9 +35,13 @@ if not is_host_up(remoteServerIP):
     print(Fore.RED + "Host is down or not reachable. Exiting." + Style.RESET_ALL)
     sys.exit()
 
+# Ask for the range of ports to scan
+start_port = int(input(Fore.CYAN + "Enter the start port: " + Style.RESET_ALL))
+end_port = int(input(Fore.CYAN + "Enter the end port: " + Style.RESET_ALL))
+
 # Print a nice banner with information on which host we are about to scan
 print(Fore.YELLOW + "_" * 60)
-print("Please wait, scanning remote host", remoteServerIP)
+print(f"Please wait, scanning remote host {remoteServerIP} from port {start_port} to {end_port}")
 print("_" * 60 + Style.RESET_ALL)
 
 # Check what time the scan started
@@ -45,18 +49,16 @@ t1 = datetime.now()
 
 # Function to scan a single port
 def scan_port(port):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(1)  # Set timeout to 1 second
-        try:
-            result = sock.connect_ex((remoteServerIP, port))
-            return port, result == 0
-        except socket.error:
-            return port, False
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(0.5)  # Set timeout to 0.5 seconds to speed up closed port checks
+    result = sock.connect_ex((remoteServerIP, port))
+    sock.close()
+    return port, result == 0
 
 # Using ThreadPoolExecutor to scan ports concurrently
 open_ports = []
-with ThreadPoolExecutor(max_workers=100) as executor:
-    futures = [executor.submit(scan_port, port) for port in range(1, 1025)]
+with ThreadPoolExecutor(max_workers=500) as executor:  # Increase max_workers for faster scanning
+    futures = [executor.submit(scan_port, port) for port in range(start_port, end_port + 1)]
     for future in as_completed(futures):
         port, is_open = future.result()
         if is_open:
